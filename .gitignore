@@ -36,6 +36,7 @@
 *.x86_64
 *.hex
 
+
 # Debug files
 *.dSYM/
 *.su
@@ -56,8 +57,49 @@ dkms.conf
 
 # Eclipse CDT
 .settings/
-Debug/
 Release/
 
 # macOS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux files
+.directory
+.Trash-*
+
+# Backup files
+*.bak
+*.swp
+*.tmp
+*~
+*.orig
+*.save
+
+# Log files
+*.log
+
+# Build directories
+build/
+Build/
+BUILD/
+out/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Temporary files
+*.temp
+.cache/

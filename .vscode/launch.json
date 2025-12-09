@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/flaviodemusso/Desktop/DiCosola_830151_DeMusso_826084_esonero_udp/server-project/src",
+      "program": "/Users/flaviodemusso/Desktop/DiCosola_830151_DeMusso_826084_esonero_udp/server-project/src/build/Debug/outDebug"
+    }
+  ]
+}

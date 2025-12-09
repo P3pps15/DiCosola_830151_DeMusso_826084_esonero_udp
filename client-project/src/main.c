@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <errno.h>
 #define closesocket close
 #endif
 
@@ -221,14 +222,130 @@ int main(int argc, char *argv[]) {
 
 	int my_socket;
 
-	// TODO: Create UDP socket
+	char *server_name = DEFAULT_SERVER_NAME;
+    int server_port = DEFAULT_SERVER_PORT;
+    char *req_string = NULL;
 
-	// TODO: Configure server address
+    /* Parsing parametri da linea di comando */
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-s") == 0 && i + 1 < argc) {
+            server_name = argv[++i];
+        } else if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
+            server_port = atoi(argv[++i]);
+        } else if (strcmp(argv[i], "-r") == 0 && i + 1 < argc) {
+            req_string = argv[++i];
+        } else {
+            usage(argv[0]);
+            clearwinsock();
+            return 1;
+        }
+    }
 
-	// TODO: Implement UDP communication logic
+    if (req_string == NULL) {
+        usage(argv[0]);
+        clearwinsock();
+        return 1;
+    }
 
-	// TODO: Close socket
-	// closesocket(my_socket);
+    struct request req;
+    if (parse_request_string(req_string, &req) != 0) {
+        printf("Errore: richiesta -r non valida.\n");
+        clearwinsock();
+        return 1;
+    }
+
+    /* Risoluzione DNS del server */
+    struct addrinfo hints, *res = NULL;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    char port_str[16];
+    sprintf(port_str, "%d", server_port);
+
+    int gai = getaddrinfo(server_name, port_str, &hints, &res);
+    if (gai != 0 || res == NULL) {
+        printf("Errore di risoluzione DNS per %s:%d\n", server_name, server_port);
+        clearwinsock();
+        return 1;
+    }
+
+    /* Ottieni stringa IP dal risultato */
+    char ip_str[INET_ADDRSTRLEN] = {0};
+    struct sockaddr_in *addr_in = (struct sockaddr_in *)res->ai_addr;
+    inet_ntop(AF_INET, &(addr_in->sin_addr), ip_str, sizeof(ip_str));
+
+    // TODO: Create UDP socket
+    my_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (my_socket < 0) {
+        printf("Errore nella creazione del socket UDP.\n");
+        freeaddrinfo(res);
+        clearwinsock();
+        return 1;
+    }
+
+    // TODO: Configure server address
+    /* (usiamo direttamente res->ai_addr / res->ai_addrlen ottenuti da getaddrinfo) */
+
+    // TODO: Implement UDP communication logic
+
+    /* Serializza richiesta */
+    char send_buffer[REQ_WIRE_SIZE];
+    int send_len = serialize_request(&req, send_buffer, sizeof(send_buffer));
+    if (send_len < 0) {
+        printf("Errore nella serializzazione della richiesta.\n");
+        closesocket(my_socket);
+        freeaddrinfo(res);
+        clearwinsock();
+        return 1;
+    }
+
+    /* Invio richiesta */
+    int sent = sendto(my_socket,
+                      send_buffer,
+                      send_len,
+                      0,
+                      res->ai_addr,
+                      res->ai_addrlen);
+    if (sent < 0) {
+        printf("Errore in sendto().\n");
+        closesocket(my_socket);
+        freeaddrinfo(res);
+        clearwinsock();
+        return 1;
+    }
+
+    freeaddrinfo(res);
+
+    /* Ricezione risposta */
+    char recv_buffer[RESP_WIRE_SIZE];
+    struct sockaddr_in from_addr;
+    socklen_t from_len = sizeof(from_addr);
+    int recvd = recvfrom(my_socket,
+                         recv_buffer,
+                         sizeof(recv_buffer),
+                         0,
+                         (struct sockaddr *)&from_addr,
+                         &from_len);
+    if (recvd <= 0) {
+        printf("Errore in recvfrom() o nessun dato ricevuto.\n");
+        closesocket(my_socket);
+        clearwinsock();
+        return 1;
+    }
+
+    struct response resp;
+    if (deserialize_response(recv_buffer, recvd, &resp) != 0) {
+        printf("Errore nella deserializzazione della risposta.\n");
+        closesocket(my_socket);
+        clearwinsock();
+        return 1;
+    }
+
+    /* Stampa risultato */
+    print_response_message(server_name, ip_str, &resp, req.city);
+
+	closesocket(my_socket);
 
 	printf("Client terminated.\n");
 

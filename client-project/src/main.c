@@ -7,12 +7,11 @@
  * portable across Windows, Linux, and macOS.
  */
 
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <string.h>
 #include <ctype.h>
-#define closesocket close
 #else
 #include <string.h>
 #include <unistd.h>
@@ -32,7 +31,7 @@
 #define NO_ERROR 0
 
 void clearwinsock() {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	WSACleanup();
 #endif
 }
@@ -164,7 +163,7 @@ int ValidateCityLength(const char *city) {
 int CreateUDPSocket(void) {
 	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error creating socket: %d\n", WSAGetLastError());
 #else
 		perror("Error creating socket");
@@ -188,7 +187,7 @@ int GetHostnameFromAddress(const struct sockaddr_in *addr, char *hostname, int h
 		return -1;
 	}
 	
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	char host[NI_MAXHOST];
 	char serv[NI_MAXSERV];
 	if (getnameinfo((struct sockaddr *)&sa, sizeof(sa), host, NI_MAXHOST, serv, NI_MAXSERV, 0) != 0) {
@@ -218,7 +217,7 @@ int ResolveServerAddress(const char *server, int port, struct sockaddr_in *serve
 	
 	int ret = getaddrinfo(server, NULL, &hints, &result);
 	if (ret != 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error resolving server address\n");
 #else
 		fprintf(stderr, "Error resolving server address: %s\n", gai_strerror(ret));
@@ -394,7 +393,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	// Initialize Winsock
 	WSADATA wsa_data;
 	int result = WSAStartup(MAKEWORD(2,2), &wsa_data);
@@ -441,7 +440,7 @@ int main(int argc, char *argv[]) {
 	bytesSent = sendto(my_socket, buffer, reqSize, 0,
 	                   (struct sockaddr *)&serverAddr, sizeof(serverAddr));
 	if (bytesSent < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error sending request: %d\n", WSAGetLastError());
 #else
 		perror("Error sending request");
@@ -458,7 +457,7 @@ int main(int argc, char *argv[]) {
 	                         (struct sockaddr *)&serverAddr, &serverAddrLen);
 	
 	if (bytesReceived < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error receiving response: %d\n", WSAGetLastError());
 #else
 		perror("Error receiving response");

@@ -7,12 +7,11 @@
  * portable across Windows, Linux, and macOS.
  */
 
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <string.h>
 #include <ctype.h>
-#define closesocket close
 #else
 #include <string.h>
 #include <unistd.h>
@@ -37,7 +36,7 @@
 static int g_serverSocket = -1;
 
 void clearwinsock() {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	WSACleanup();
 #endif
 }
@@ -77,7 +76,7 @@ int ParseServerArguments(int argc, char *argv[], int *port) {
 int CreateUDPSocket(void) {
 	int sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error creating socket: %d\n", WSAGetLastError());
 #else
 		perror("Error creating socket");
@@ -187,7 +186,7 @@ int GetHostnameFromAddress(const struct sockaddr_in *addr, char *hostname, int h
 		return -1;
 	}
 	
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	char host[NI_MAXHOST];
 	char serv[NI_MAXSERV];
 	if (getnameinfo((struct sockaddr *)addr, sizeof(struct sockaddr_in), host, NI_MAXHOST, serv, NI_MAXSERV, 0) != 0) {
@@ -280,7 +279,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 	// Initialize Winsock
 	WSADATA wsa_data;
 	int result = WSAStartup(MAKEWORD(2,2), &wsa_data);
@@ -291,7 +290,7 @@ int main(int argc, char *argv[]) {
 #endif
 
 	// Setup signal handler
-#if !defined WIN32
+#if !defined(_WIN32) && !defined(WIN32)
 	signal(SIGINT, signalHandler);
 	signal(SIGTERM, signalHandler);
 #endif
@@ -312,7 +311,7 @@ int main(int argc, char *argv[]) {
 
 	// Bind socket
 	if (bind(my_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 		fprintf(stderr, "Error binding socket: %d\n", WSAGetLastError());
 #else
 		perror("Error binding socket");
@@ -334,7 +333,7 @@ int main(int argc, char *argv[]) {
 		                         (struct sockaddr *)&clientAddr, &clientAddrLen);
 		
 		if (bytesReceived < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 			int error = WSAGetLastError();
 			if (error != WSAECONNRESET) {
 				fprintf(stderr, "Error receiving data: %d\n", error);
@@ -414,7 +413,7 @@ int main(int argc, char *argv[]) {
 			bytesSent = sendto(my_socket, buffer, respSize, 0,
 			                   (struct sockaddr *)&clientAddr, clientAddrLen);
 			if (bytesSent < 0) {
-#if defined WIN32
+#if defined(_WIN32) || defined(WIN32)
 				fprintf(stderr, "Error sending response: %d\n", WSAGetLastError());
 #else
 				perror("Error sending response");

@@ -2,16 +2,41 @@
 # Supports Windows (MinGW), Linux, and macOS
 
 # Detect OS
-UNAME_S := $(shell uname -s 2>/dev/null || echo "Windows")
+# First check if OS is already set (Windows sets OS=Windows_NT)
+ifeq ($(OS),Windows_NT)
+    # Windows detected via OS environment variable
+    UNAME_S := Windows
+else
+    # Try to detect via uname
+    UNAME_S := $(shell uname -s 2>/dev/null || echo "Unknown")
+    # Check for Windows (MinGW/MSYS)
+    ifneq ($(findstring MINGW,$(UNAME_S)),)
+        OS := Windows_NT
+    endif
+    ifneq ($(findstring MSYS,$(UNAME_S)),)
+        OS := Windows_NT
+    endif
+    ifneq ($(findstring CYGWIN,$(UNAME_S)),)
+        OS := Windows_NT
+    endif
+    # If uname fails, might be Windows
+    ifeq ($(UNAME_S),Unknown)
+        # Try to detect via compiler
+        ifneq ($(shell gcc -dumpmachine 2>/dev/null | grep -i mingw),)
+            OS := Windows_NT
+            UNAME_S := Windows
+        endif
+    endif
+endif
 
 # Debug directory
 DEBUG_DIR = debug
 
 # Compiler and flags
-ifeq ($(UNAME_S),Windows)
+ifeq ($(OS),Windows_NT)
     # Windows with MinGW
     CC = gcc
-    CFLAGS = -Wall -Wextra -std=c11
+    CFLAGS = -Wall -Wextra -std=c11 -DWIN32
     SERVER_TARGET = $(DEBUG_DIR)/server-project.exe
     CLIENT_TARGET = $(DEBUG_DIR)/client-project.exe
     LDFLAGS_SERVER = -lws2_32
@@ -67,7 +92,7 @@ all: server client
 
 # Create debug directory
 $(DEBUG_DIR):
-ifeq ($(UNAME_S),Windows)
+ifeq ($(OS),Windows_NT)
 	@if not exist $(DEBUG_DIR) mkdir $(DEBUG_DIR)
 else
 	@$(MKDIR) $(DEBUG_DIR)
@@ -90,7 +115,7 @@ $(CLIENT_TARGET): $(CLIENT_SRC) client-project/src/protocol.h | $(DEBUG_DIR)
 # Clean target
 clean:
 	@echo "Cleaning..."
-ifeq ($(UNAME_S),Windows)
+ifeq ($(OS),Windows_NT)
 	-$(RM) $(SERVER_TARGET) $(CLIENT_TARGET) $(SERVER_OBJ) $(CLIENT_OBJ) 2>nul
 	-if exist $(DEBUG_DIR) $(RMDIR) $(DEBUG_DIR) 2>nul
 else

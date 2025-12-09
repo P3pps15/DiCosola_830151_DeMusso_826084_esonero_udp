@@ -1,121 +1,40 @@
-# Makefile for UDP Client-Server Project
-# Supports Windows (MinGW), Linux, and macOS
+CC := gcc
+CFLAGS := -Wall -Wextra -pedantic -std=c11
+LDFLAGS :=
 
-# Detect OS
-# Check for MSYS/MINGW first (uses bash, not cmd)
-ifdef MSYSTEM
-    IS_WINDOWS = 1
-    IS_MSYS = 1
-else
-    # Windows sets OS=Windows_NT environment variable
-    ifdef OS
-        ifeq ($(OS),Windows_NT)
-            IS_WINDOWS = 1
-            IS_MSYS = 0
-        else
-            IS_WINDOWS = 0
-            IS_MSYS = 0
-        endif
-    else
-        # Check for Windows via COMSPEC
-        ifdef COMSPEC
-            IS_WINDOWS = 1
-            IS_MSYS = 0
-        else
-            # Default to Unix-like
-            IS_WINDOWS = 0
-            IS_MSYS = 0
-        endif
-    endif
+ifeq ($(OS),Windows_NT)
+CFLAGS += -DWIN32 -D_WIN32_WINNT=0x0600
+LDFLAGS += -lws2_32
 endif
 
-# Debug directory
-DEBUG_DIR = debug
+BUILD_DIR := build
+CLIENT_SRC := client-project/src/main.c
+SERVER_SRC := server-project/src/main.c
+CLIENT_BIN := $(BUILD_DIR)/client
+SERVER_BIN := $(BUILD_DIR)/server
 
-# Compiler and flags
-ifeq ($(IS_WINDOWS),1)
-    # Windows with MinGW
-    CC = gcc
-    CFLAGS = -Wall -Wextra -std=c11 -DWIN32
-    SERVER_TARGET = $(DEBUG_DIR)/server-project.exe
-    CLIENT_TARGET = $(DEBUG_DIR)/client-project.exe
-    LDFLAGS_SERVER = -lws2_32
-    LDFLAGS_CLIENT = -lws2_32
-    ifeq ($(IS_MSYS),1)
-        # MSYS/MINGW uses Unix commands
-        RM = rm -f
-        RMDIR = rm -rf
-    else
-        # Windows CMD uses Windows commands
-        RM = del /Q
-        RMDIR = rmdir /S /Q
-    endif
-else
-    # Linux/macOS/Unix
-    CC = gcc
-    CFLAGS = -Wall -Wextra -std=c11
-    SERVER_TARGET = $(DEBUG_DIR)/server-project
-    CLIENT_TARGET = $(DEBUG_DIR)/client-project
-    LDFLAGS_SERVER = 
-    LDFLAGS_CLIENT = 
-    RM = rm -f
-    RMDIR = rm -rf
-endif
+.PHONY: all client server run-client run-server clean
 
-# Source files
-SERVER_SRC = server-project/src/main.c
-CLIENT_SRC = client-project/src/main.c
+all: client server
 
-# Object files
-SERVER_OBJ = server-project/src/main.o
-CLIENT_OBJ = client-project/src/main.o
+client: $(CLIENT_BIN)
 
-# Default target
-all: server client
+server: $(SERVER_BIN)
 
-# Create debug directory
-$(DEBUG_DIR):
-ifeq ($(IS_WINDOWS),1)
-ifeq ($(IS_MSYS),1)
-	@mkdir -p $(DEBUG_DIR)
-else
-	@if not exist $(DEBUG_DIR) mkdir $(DEBUG_DIR)
-endif
-else
-	@mkdir -p $(DEBUG_DIR)
-endif
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
 
-# Server target
-server: $(DEBUG_DIR) $(SERVER_TARGET)
+$(CLIENT_BIN): $(CLIENT_SRC) client-project/src/protocol.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -Iclient-project/src $(CLIENT_SRC) -o $(CLIENT_BIN) $(LDFLAGS)
 
-$(SERVER_TARGET): $(SERVER_SRC) server-project/src/protocol.h | $(DEBUG_DIR)
-	@echo "Compiling server..."
-	$(CC) $(CFLAGS) -o $(SERVER_TARGET) $(SERVER_SRC) $(LDFLAGS_SERVER)
+$(SERVER_BIN): $(SERVER_SRC) server-project/src/protocol.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -Iserver-project/src $(SERVER_SRC) -o $(SERVER_BIN) $(LDFLAGS)
 
-# Client target
-client: $(DEBUG_DIR) $(CLIENT_TARGET)
+run-client: client
+	$(CLIENT_BIN)
 
-$(CLIENT_TARGET): $(CLIENT_SRC) client-project/src/protocol.h | $(DEBUG_DIR)
-	@echo "Compiling client..."
-	$(CC) $(CFLAGS) -o $(CLIENT_TARGET) $(CLIENT_SRC) $(LDFLAGS_CLIENT)
+run-server: server
+	$(SERVER_BIN)
 
-# Clean target
 clean:
-	@echo "Cleaning..."
-ifeq ($(IS_WINDOWS),1)
-ifeq ($(IS_MSYS),1)
-	-$(RM) $(SERVER_TARGET) $(CLIENT_TARGET) $(SERVER_OBJ) $(CLIENT_OBJ) 2>/dev/null || true
-	-$(RMDIR) $(DEBUG_DIR) 2>/dev/null || true
-else
-	-$(RM) $(SERVER_TARGET) $(CLIENT_TARGET) $(SERVER_OBJ) $(CLIENT_OBJ) 2>nul
-	-if exist $(DEBUG_DIR) $(RMDIR) $(DEBUG_DIR) 2>nul
-endif
-else
-	-$(RM) $(SERVER_TARGET) $(CLIENT_TARGET) $(SERVER_OBJ) $(CLIENT_OBJ)
-	-$(RMDIR) $(DEBUG_DIR) 2>/dev/null || true
-endif
-	@echo "Clean completed."
-
-# Phony targets
-.PHONY: all server client clean $(DEBUG_DIR)
-
+	rm -rf $(BUILD_DIR)
